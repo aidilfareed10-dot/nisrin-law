@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="172 306 284 284" role="img" aria-label="Nisrin Law">
   <defs>
-    <linearGradient id="cu" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="cu" gradientUnits="userSpaceOnUse" x1="180" y1="310" x2="450" y2="585">
       <stop offset="0" stop-color="#c98a62"/>
       <stop offset=".45" stop-color="#e9b08a"/>
       <stop offset=".7" stop-color="#b9774f"/>
