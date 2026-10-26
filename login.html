@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in — Nisrin Law</title>
+  <link rel="icon" href="assets/img/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/app.css" />
+</head>
+<body>
+<div class="auth">
+  <aside class="auth-side">
+    <div class="auth-map" data-worldmap data-align="center" aria-hidden="true"></div>
+    <div class="auth-top">
+      <a href="index.html" class="auth-brand" aria-label="Nisrin Law — home">
+        <img src="assets/img/logo-mark.svg" alt="" width="44" height="44" />
+        <span class="brand-text"><strong>Nisrin Law.</strong><small>Advocates &amp; Solicitors</small></span>
+      </a>
+      <label class="lang"><select data-lang-switch aria-label="Language"></select></label>
+    </div>
+    <div>
+      <h1>Your matter,<br /><em>wherever you are.</em></h1>
+      <ul>
+        <li>Follow your case progress stage by stage, in real time</li>
+        <li>Every date shown in your own time zone</li>
+        <li>Share documents securely with your lawyer</li>
+        <li>View invoices in your preferred currency</li>
+      </ul>
+    </div>
+    <p class="hide-m" style="color:var(--muted-light);font-size:13px;margin:0">Protected by legal professional privilege · PDPA 2010</p>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <div class="auth-tabs" role="tablist">
+        <button type="button" data-role="client" class="on">Client</button>
+        <button type="button" data-role="admin">Firm staff</button>
+      </div>
+      <h2 data-i18n="login.title">Welcome back</h2>
+      <p id="sub" data-i18n="login.sub">Sign in to view your matters, documents and updates.</p>
+      <form id="loginForm" novalidate>
+        <div class="field"><label for="email">Email address</label><input id="email" type="email" class="input" autocomplete="username" required /></div>
+        <div class="field"><label for="pw">Password</label><input id="pw" type="password" class="input" autocomplete="current-password" required /></div>
+        <p class="form-error" id="err" role="alert" style="color:var(--danger);font-size:14px;margin:0"></p>
+        <button class="btn btn-navy" type="submit" id="go"><span data-i18n="login.btn">Sign in</span></button>
+      </form>
+      <p style="margin-top:20px;font-size:14px;color:var(--muted)" id="newLink"><a href="register.html" class="btn-link" data-i18n="login.new">New client? Create an account</a></p>
+      <p style="font-size:13px;color:var(--muted)">Forgot your password? Call the firm on +603-2178 8888.</p>
+      <div class="demo">
+        <strong>Ready-made access.</strong> Sign in instantly with a sample account:
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button type="button" class="btn btn-plain btn-sm" data-demo="client">Sample client</button>
+          <button type="button" class="btn btn-plain btn-sm" data-demo="admin">Sample staff</button>
+        </div>
+        <p id="modeNote" style="margin:10px 0 0;font-size:12.5px"></p>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/seed.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/i18n.js"></script>
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  let role = params.get('role') === 'admin' ? 'admin' : 'client';
+  const tabs = document.querySelectorAll('.auth-tabs button');
+  function setRole(r) {
+    role = r;
+    tabs.forEach((b) => b.classList.toggle('on', b.dataset.role === r));
+    $('newLink').style.display = r === 'admin' ? 'none' : '';
+    $('sub').textContent = r === 'admin' ? 'Sign in to manage enquiries, clients and case progress.' : I18N.t('login.sub');
+  }
+  tabs.forEach((b) => b.addEventListener('click', () => setRole(b.dataset.role)));
+  setRole(role);
+  $('modeNote').textContent = Store.MODE === 'supabase'
+    ? 'Connected to the firm database — enquiries and updates are shared across all devices.'
+    : 'Local demo mode — data stays in this browser until the database is connected.';
+
+  await Store.init();
+  const current = Store.current();
+  if (current && !params.get('role')) location.replace(current.role === 'admin' ? 'admin.html' : 'client.html');
+
+  let busy = false;
+  $('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    const err = $('err'); err.textContent = '';
+    busy = true; $('go').disabled = true; $('go').firstElementChild.textContent = 'Signing in…';
+    try {
+      const res = await Store.login($('email').value, $('pw').value);
+      if (res.error) { err.textContent = res.error; return; }
+      const u = res.user;
+      if (u.role !== role) {
+        await Store.logout();
+        err.textContent = role === 'admin' ? 'This account does not have staff access.' : 'Staff accounts sign in under “Firm staff”.';
+        return;
+      }
+      location.href = u.role === 'admin' ? 'admin.html' : 'client.html';
+    } catch (ex) {
+      err.textContent = 'Could not reach the server. Check your connection and try again.';
+    } finally {
+      busy = false; $('go').disabled = false; $('go').firstElementChild.textContent = I18N.t('login.btn');
+    }
+  });
+
+  // Sample accounts (created by supabase/setup.sql, or the local demo seed).
+  document.querySelectorAll('[data-demo]').forEach((b) => b.addEventListener('click', () => {
+    const acct = b.dataset.demo === 'admin' ? Store.demoAccounts.staff : Store.demoAccounts.client;
+    setRole(b.dataset.demo);
+    $('email').value = acct.email;
+    $('pw').value = acct.password;
+    $('loginForm').requestSubmit();
+  }));
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/d3-array@3.2.4/dist/d3-array.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/dist/d3-geo.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="assets/js/worldmap.js"></script>
+</body>
+</html>
